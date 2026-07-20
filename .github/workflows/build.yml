@@ -1,0 +1,38 @@
+name: build-and-push
+
+# Weekly rebuild keeps Debian + Wine + steamcmd patched; the game itself
+# installs to the volume at runtime (fleet NFS-install model), so game
+# updates never need an image rebuild.
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile, entrypoint.sh, .github/workflows/build.yml]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/gamectl-hq/sonsoftheforest-kube
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
